@@ -177,9 +177,20 @@ class Board():
                 # Make sure walkable terrain
                 if self.grid[node_position[0]][node_position[1]] != 0:
                     continue
+                # if self.grid[node_position[0] - 1][node_position[1]] != 0 and self.grid[node_position[0]][node_position[1] - 1] != 0:
+                #     continue
+                # if self.grid[node_position[0] + 1][node_position[1]] != 0 and self.grid[node_position[0]][node_position[1] + 1] != 0:
+                #     continue
 
                 # Create new node
                 new_node = Node(current_node, node_position)
+                parent = new_node.parent
+
+                # Prevent diagonal movement when two walls are blocked
+                if self.grid[parent.position[0]][parent.position[1]+1] != 0 and self.grid[parent.position[0]+1][parent.position[1]] != 0:
+                    continue
+                if self.grid[parent.position[0]][parent.position[1]-1] != 0 and self.grid[parent.position[0]+1][parent.position[1]] != 0:
+                    continue
 
                 # Append
                 children.append(new_node)
