@@ -1,6 +1,15 @@
 import sys
 import pygame
 
+
+# G cost is the current node distance to start node
+# H cost is the current node heuristic distance to the end node
+# F cost = G + H // Lower Fcost = Better
+
+# TODO: IMPLEMENT WALLS TO THE GRID
+# TODO: GAME STATES AND KEYBINDINGS
+# TODO: WHEN PATH IS NOT FOUND
+
 class Node():
     def __init__(self, parent=None, position=None):
         self.parent = parent
@@ -17,7 +26,7 @@ class Board():
     def __init__(self):
         # Initialize Pygame
         pygame.init()
-        size = self.WIDTH, self.HEIGHT = 400, 400
+        size = self.WIDTH, self.HEIGHT = 600, 600
         self.screen = pygame.display.set_mode(size)
 
         # COLORS
@@ -26,17 +35,23 @@ class Board():
         self.ORANGE = 255, 165, 0
         self.GREEN = 0, 128, 0
         self.RED = 255, 0, 0
+        self.BLUE = 0, 0, 255
+
+        self.screen.fill(self.WHITE)
 
         # Grid
-        self.cols = 10
-        self.rows = 10
+        self.cols = 20
+        self.rows = 20
+
+        self.cell_width = self.WIDTH // self.cols
+        self.cell_height = self.HEIGHT // self.rows
 
         self.grid = self.init_grid()
         self.found = False
         self.draw_grid()
 
         # FPS
-        self.max_fps = 5
+        self.max_fps = 60
         self.clock = pygame.time.Clock()
 
         # Nodes
@@ -44,9 +59,8 @@ class Board():
         self.closed_list = []
 
         # Initialize the start and end node
-
-        start = (1, 1)
-        end = (8, 5)
+        start = (3, 5)
+        end = (13, 5)
 
         self.start_node = Node(None, start)
         self.start_node.g = self.start_node.h = self.start_node.f = 0
@@ -60,6 +74,12 @@ class Board():
 
         self.open_list.append(self.start_node)
 
+        self.test_wall()
+
+        # 0 = Player Control
+        # 1 = Run
+        # 2 = Pause
+        self.game_state = 0
 
     def init_grid(self):
         """"
@@ -74,11 +94,35 @@ class Board():
         """ Initialize the grid to the screen """
         for i in range(self.cols):
             for j in range(self.rows):
-                self.show(self.WHITE, i, j, 1)
+                self.show(self.BLACK, i, j, 1)
+
+    def draw_wall(self):
+        for i in range(self.cols):
+            for j in range(self.rows):
+                if self.grid[i][j] == 1:
+                    self.show(self.BLACK, i, j, 0)
+
+    def update_grid(self):
+        if not self.found:
+            for i in self.open_list:
+                if i in self.closed_list:
+                    continue
+                open_pos = list(i.position)
+                self.show(self.GREEN, open_pos[0], open_pos[1], 0)
+            for j in self.closed_list:
+                closed_pos = list(j.position)
+                self.show(self.RED, closed_pos[0], closed_pos[1], 0)
+
+    def test_wall(self):
+        self.grid[8][5] = 1
+        self.grid[8][6] = 1
+        self.grid[8][7] = 1
+        self.grid[8][4] = 1
+        self.grid[8][3] = 1
 
     def show(self, color, x, y, st):
         """ Draw singular rectangle """
-        pygame.draw.rect(self.screen, color, (x * 40, y * 40, 40, 40), st) # width or height // cols or rows = 40
+        pygame.draw.rect(self.screen, color, (x * self.cell_width, y * self.cell_height, self.cell_width, self.cell_height), st) # width or height // cols or rows = 40
         pygame.display.update()
 
     def heuristics(self, x, y):
@@ -99,28 +143,22 @@ class Board():
                     current_index = index
 
             # Pop current off open list, add to closed list
-            # self.open_list.pop(current_index)
+            #self.open_list.pop(current_index)
             del self.open_list[current_index]
             self.closed_list.append(current_node)
 
-            for i in self.open_list:
-                open_pos = list(i.position)
-                self.show(self.GREEN, open_pos[0], open_pos[1], 0)
-            for j in self.closed_list:
-                closed_pos = list(j.position)
-                self.show(self.RED, closed_pos[0], closed_pos[1], 0)
-
+            # If the algorithm is finished checking
             if current_node == self.end_node:
                 path = []
                 current = current_node
                 while current is not None:
                     pos = list(current.position)
                     path.append(pos)
-                    self.show(self.WHITE, pos[0], pos[1], 0)
+                    self.show(self.BLUE, pos[0], pos[1], 0)
                     current = current.parent
                     # for i in self.open_list:
                     self.found = True
-                print("Shortest path is " + str(current_node.f) + "blocks away")
+                print("Shortest path is " + str(current_node.f) + " blocks away")
                 return path[::-1]  # Return reversed path
 
             # Generate children
@@ -148,11 +186,9 @@ class Board():
 
             # Loop through children
             for child in children:
-
                 # Child is on the closed list
-                for closed_child in self.closed_list:
-                    if child == closed_child:
-                        continue
+                if child in self.closed_list:
+                    continue
 
                 # Create the f, g, and h values
                 child.g = current_node.g + 1
@@ -160,22 +196,42 @@ class Board():
                 child.f = child.g + child.h
 
                 # Child is already in the open list
-                for open_node in self.open_list:
-                    if child == open_node and child.g > open_node.g:
-                        continue
+                # for open_node in self.open_list:
+                #     if child == open_node and child.g > open_node.g:
+                #         continue
+
+                if child in self.open_list:
+                    continue
 
                 # Add the child to the open list
                 self.open_list.append(child)
 
+    def cell_onclick(self):
+        pass
+
     def run(self):
         """ Main loop of the game """
-
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT: sys.exit()
+                elif self.game_state == 0:
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        try:
+                            pos = pygame.mouse.get_pos()
+                            self.grid[(pos[0]) // self.cell_width][(pos[1]) // self.cell_height] = 1
+                            #print(pos[0] // self.cell_height)
+                            self.draw_wall()
+                        except AttributeError:
+                            pass
+                    elif event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_SPACE:
+                            print("You pressed space")
+                            self.game_state = 1
 
-            if self.found is False:
+
+            if self.game_state == 1 and not self.found:
                 self.a_star()
+                self.update_grid()
 
             pygame.display.flip()
             self.clock.tick(self.max_fps)
