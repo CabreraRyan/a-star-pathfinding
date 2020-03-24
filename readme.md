@@ -2,8 +2,6 @@
 
 Created By: Ryan Kenneth Cabrera
 
-What I learned:
-Nodes
 
 ![](images/astar.png)
 
@@ -11,3 +9,5 @@ Nodes
 - Python 3
 - Pygame
 
+Spacebar - Start the game
+Mouse Click - Create Walls
